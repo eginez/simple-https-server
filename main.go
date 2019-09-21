@@ -18,6 +18,7 @@ type todo struct {
 }
 
 var allTodos = new(sync.Map)
+var mapMut sync.Mutex
 var idCounter int32
 
 func returnOk(w http.ResponseWriter) {
@@ -31,10 +32,12 @@ func returnJson(w http.ResponseWriter, body []byte) {
 }
 func marshalMapToJson(m *sync.Map) ([]byte, error) {
 	all := make(map[string]todo)
+    mapMut.Lock()
 	m.Range(func(k, v interface{}) bool {
 		all[k.(string)] = v.(todo)
 		return true
 	})
+    mapMut.Unlock()
 	return json.Marshal(all)
 }
 
@@ -46,7 +49,7 @@ func server(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		log.Println(string(jsonRes))
+        //log.Println("Returning :"+ string(len(jsonRes)))
 		returnJson(w, jsonRes)
 		break
 	case http.MethodPost:
@@ -59,8 +62,9 @@ func server(w http.ResponseWriter, req *http.Request) {
 		json.Unmarshal(bt, &td)
 		newID := fmt.Sprintf("%d", atomic.AddInt32(&idCounter, 1))
 		log.Printf("saving %s", td)
+        mapMut.Lock()
 		allTodos.Store(newID, todo{Content: td.Content, ID: newID})
-		log.Println(allTodos)
+        mapMut.Unlock()
 		returnOk(w)
 		break
 	case http.MethodDelete:
@@ -82,7 +86,7 @@ func server(w http.ResponseWriter, req *http.Request) {
 func main() {
 	argPort := flag.String("port", "8443", "the port")
 	flag.Parse()
-	http.HandleFunc("/api/todo", server)
+	http.HandleFunc("/api/todos", server)
 	port := fmt.Sprintf(":%s", *argPort)
 	log.Printf("running server localhost%s", port)
 	err := http.ListenAndServeTLS(port, "server.crt", "server.key", nil)
