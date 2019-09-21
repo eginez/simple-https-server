@@ -80,7 +80,7 @@ func server(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	argPort := flag.String("port", "8090", "the port")
+	argPort := flag.String("port", "8443", "the port")
 	flag.Parse()
 	http.HandleFunc("/api/todo", server)
 	port := fmt.Sprintf(":%s", *argPort)
